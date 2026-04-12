@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Step Index Bot — Admin Panel</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f0e; --bg2: #1a1a18; --bg3: #222220;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.18);
+      --text: #f0ede6; --text2: #a09e97; --text3: #5a5856;
+      --blue: #85B7EB; --blue-d: #185FA5;
+      --green: #97C459; --green-d: #3B6D11; --green-bg: #173404;
+      --red: #F09595; --red-d: #A32D2D; --red-bg: #501313;
+      --amber: #FAC775; --amber-d: #BA7517; --amber-bg: #412402;
+      --purple: #AFA9EC;
+      --radius-md: 8px; --radius-lg: 12px;
+      --font: -apple-system, 'Segoe UI', sans-serif;
+      --mono: 'Courier New', monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; padding: 1.5rem 1rem; }
+    .app { max-width: 900px; margin: 0 auto; }
+
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 0.5px solid var(--border); }
+    .logo { width: 42px; height: 42px; border-radius: 10px; background: var(--amber-d); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo svg { width: 22px; height: 22px; fill: white; }
+    .header-text h1 { font-size: 20px; font-weight: 600; }
+    .header-text p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+    .badge { background: var(--red-bg); color: var(--red); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-left: auto; border: 0.5px solid var(--red-d); }
+
+    /* Login gate */
+    .gate { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 1rem; }
+    .gate-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 380px; text-align: center; }
+    .gate-card h2 { font-size: 18px; margin-bottom: 6px; }
+    .gate-card p { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; }
+    .gate-card input { width: 100%; padding: 10px 12px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg3); color: var(--text); font-size: 15px; font-family: var(--mono); letter-spacing: 3px; margin-bottom: 1rem; }
+    .gate-card input:focus { outline: none; border-color: var(--amber-d); }
+    .gate-card input::placeholder { letter-spacing: 0; font-family: var(--font); }
+    .err-msg { color: var(--red); font-size: 13px; margin-top: -0.5rem; margin-bottom: 0.5rem; min-height: 18px; }
+
+    /* Main UI */
+    .main { display: none; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+    .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
+    .card h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text2); margin-bottom: 14px; }
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+    .field input, .field select { width: 100%; padding: 8px 10px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg3); color: var(--text); font-size: 14px; font-family: var(--font); }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--amber-d); }
+    .full { grid-column: 1 / -1; }
+
+    button { padding: 9px 20px; border-radius: var(--radius-md); font-size: 14px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all 0.15s; border: 0.5px solid var(--border2); background: transparent; color: var(--text); }
+    button:hover { background: var(--bg3); }
+    button:active { transform: scale(0.98); }
+    button.primary { background: var(--amber-d); color: white; border-color: var(--amber-d); }
+    button.primary:hover { opacity: 0.88; }
+    button.danger { background: var(--red-d); color: white; border-color: var(--red-d); }
+    button.danger:hover { opacity: 0.88; }
+    button.success { background: var(--green-d); color: white; border-color: var(--green-d); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Generated key display */
+    .key-result { display: none; background: var(--bg3); border: 0.5px solid var(--amber-d); border-radius: var(--radius-md); padding: 1rem; margin-top: 1rem; }
+    .key-result .key-val { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--amber); letter-spacing: 2px; word-break: break-all; margin-bottom: 8px; }
+    .key-result .key-meta { font-size: 12px; color: var(--text2); }
+    .copy-btn { font-size: 12px; padding: 5px 12px; margin-top: 8px; }
+
+    /* Keys table */
+    .keys-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .keys-table th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); border-bottom: 0.5px solid var(--border); }
+    .keys-table td { padding: 10px 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+    .keys-table tr:last-child td { border-bottom: none; }
+    .keys-table tr:hover td { background: var(--bg3); }
+    .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .pill.active { background: var(--green-bg); color: var(--green); }
+    .pill.expired { background: var(--red-bg); color: var(--red); }
+    .pill.revoked { background: var(--bg3); color: var(--text3); }
+    .pill.lifetime { background: var(--amber-bg); color: var(--amber); }
+    .key-mono { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+    .empty-state { text-align: center; padding: 2rem; color: var(--text3); font-size: 14px; }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1rem; }
+    .stat { background: var(--bg2); border-radius: var(--radius-md); padding: 0.85rem 1rem; }
+    .stat .slabel { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+    .stat .svalue { font-size: 22px; font-weight: 600; }
+    .svalue.amber { color: var(--amber); }
+    .svalue.green { color: var(--green); }
+    .svalue.red { color: var(--red); }
+    .svalue.blue { color: var(--blue); }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap; }
+    .search-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .search-row input { flex: 1; padding: 8px 10px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg3); color: var(--text); font-size: 14px; font-family: var(--font); }
+    .search-row input:focus { outline: none; border-color: var(--amber-d); }
+    @media (max-width: 560px) { .grid2 { grid-column: 1fr; } .stats { grid-template-columns: repeat(2,1fr); } .full { grid-column: 1; } }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/></svg>
+    </div>
+    <div class="header-text">
+      <h1>Step Index Bot — Admin</h1>
+      <p>Licence Key Management Dashboard</p>
+    </div>
+    <div class="badge">PRIVATE</div>
+  </div>
+
+  <!-- Login Gate -->
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <h2>Admin Access</h2>
+      <p>Enter your admin password to continue</p>
+      <input type="password" id="admin-pass" placeholder="Admin password..." onkeydown="if(event.key==='Enter')adminLogin()" />
+      <div class="err-msg" id="login-err"></div>
+      <button class="primary" style="width:100%;" onclick="adminLogin()">Unlock Dashboard</button>
+    </div>
+  </div>
+
+  <!-- Main Dashboard -->
+  <div class="main" id="main">
+
+    <div class="stats">
+      <div class="stat"><div class="slabel">Total Keys</div><div class="svalue amber" id="s-total">0</div></div>
+      <div class="stat"><div class="slabel">Active</div><div class="svalue green" id="s-active">0</div></div>
+      <div class="stat"><div class="slabel">Expired</div><div class="svalue red" id="s-expired">0</div></div>
+      <div class="stat"><div class="slabel">Revenue Est.</div><div class="svalue blue" id="s-revenue">$0</div></div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:1rem;">
+      <div class="card">
+        <h3>Generate New Key</h3>
+        <div class="field">
+          <label>Customer name / label</label>
+          <input type="text" id="gen-name" placeholder="e.g. John Kenya, Reseller 1..." />
+        </div>
+        <div class="field">
+          <label>Licence type</label>
+          <select id="gen-type">
+            <option value="30">1 Month ($30–$50)</option>
+            <option value="90">3 Months ($70–$100)</option>
+            <option value="180">6 Months ($100–$150)</option>
+            <option value="365">1 Year ($150–$200)</option>
+            <option value="0">Lifetime ($200+)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Price charged (for your records)</label>
+          <input type="number" id="gen-price" placeholder="e.g. 120" min="0" step="1" />
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="primary" onclick="generateKey()">Generate Key</button>
+        </div>
+        <div class="key-result" id="key-result">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">New licence key generated:</div>
+          <div class="key-val" id="key-display"></div>
+          <div class="key-meta" id="key-meta"></div>
+          <button class="copy-btn" onclick="copyKey()">Copy Key</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Revoke / Check Key</h3>
+        <div class="field">
+          <label>Paste key to check or revoke</label>
+          <input type="text" id="check-key" placeholder="SXBT-XXXX-XXXX-XXXX" style="font-family:var(--mono);letter-spacing:1px;" />
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button onclick="checkKey()">Check Status</button>
+          <button class="danger" onclick="revokeKey()">Revoke</button>
+        </div>
+        <div id="check-result" style="margin-top:1rem;font-size:13px;min-height:40px;"></div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h3>All Licence Keys</h3>
+      <div class="search-row">
+        <input type="text" id="search-input" placeholder="Search by name or key..." oninput="renderTable()" />
+        <button onclick="renderTable()">Refresh</button>
+        <button class="danger" onclick="if(confirm('Delete ALL keys? This cannot be undone.'))clearAllKeys()">Clear All</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="keys-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Customer</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Expires</th>
+              <th>Price</th>
+              <th>Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="keys-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" style="display:none;">No keys yet. Generate your first key above.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────────────────────
+  // IMPORTANT: Change this password before sharing the file!
+  const ADMIN_PASSWORD = 'JateloAdmin@384';
+  const STORAGE_KEY = 'stepbot_licences';
+  // ──────────────────────────────────────────────────────────────────────────
+
+  let keys = [];
+
+  function adminLogin() {
+    const pass = document.getElementById('admin-pass').value;
+    if (pass === ADMIN_PASSWORD) {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('main').style.display = 'block';
+      loadKeys();
+    } else {
+      document.getElementById('login-err').textContent = 'Incorrect password. Try again.';
+      document.getElementById('admin-pass').value = '';
+    }
+  }
+
+  function loadKeys() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      keys = raw ? JSON.parse(raw) : [];
+    } catch(e) { keys = []; }
+    renderTable();
+    updateStats();
+  }
+
+  function saveKeys() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+  }
+
+  function generateKey() {
+    const name = document.getElementById('gen-name').value.trim();
+    const days = parseInt(document.getElementById('gen-type').value);
+    const price = parseFloat(document.getElementById('gen-price').value) || 0;
+    if (!name) { alert('Please enter a customer name.'); return; }
+
+    const key = 'SXBT-' + rand4() + '-' + rand4() + '-' + rand4();
+    const now = Date.now();
+    const expiry = days === 0 ? null : now + days * 86400000;
+    const entry = { key, name, days, price, created: now, expiry, status: 'active' };
+    keys.unshift(entry);
+    saveKeys();
+
+    const kr = document.getElementById('key-result');
+    document.getElementById('key-display').textContent = key;
+    const typeLabel = days === 0 ? 'Lifetime' : days + ' days';
+    const expiryStr = expiry ? new Date(expiry).toLocaleDateString() : 'Never';
+    document.getElementById('key-meta').textContent = typeLabel + ' | Expires: ' + expiryStr + ' | Customer: ' + name;
+    kr.style.display = 'block';
+
+    document.getElementById('gen-name').value = '';
+    document.getElementById('gen-price').value = '';
+    renderTable();
+    updateStats();
+  }
+
+  function rand4() {
+    return Math.random().toString(36).substring(2,6).toUpperCase();
+  }
+
+  function copyKey() {
+    const k = document.getElementById('key-display').textContent;
+    navigator.clipboard.writeText(k).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy Key', 2000);
+    });
+  }
+
+  function checkKey() {
+    const k = document.getElementById('check-key').value.trim().toUpperCase();
+    const entry = keys.find(e => e.key === k);
+    const el = document.getElementById('check-result');
+    if (!entry) { el.innerHTML = '<span style="color:var(--red);">Key not found.</span>'; return; }
+    const status = getStatus(entry);
+    const expiryStr = entry.expiry ? new Date(entry.expiry).toLocaleDateString() : 'Lifetime';
+    el.innerHTML = `
+      <b>${entry.key}</b><br>
+      Customer: ${entry.name}<br>
+      Status: <span style="color:${status==='active'?'var(--green)':status==='expired'?'var(--red)':'var(--text3)'}">${status.toUpperCase()}</span><br>
+      Expires: ${expiryStr}<br>
+      Price paid: $${entry.price}
+    `;
+  }
+
+  function revokeKey() {
+    const k = document.getElementById('check-key').value.trim().toUpperCase();
+    const entry = keys.find(e => e.key === k);
+    if (!entry) { document.getElementById('check-result').innerHTML = '<span style="color:var(--red);">Key not found.</span>'; return; }
+    if (!confirm('Revoke key ' + k + ' for ' + entry.name + '? They will lose access immediately.')) return;
+    entry.status = 'revoked';
+    saveKeys();
+    checkKey();
+    renderTable();
+    updateStats();
+  }
+
+  function getStatus(entry) {
+    if (entry.status === 'revoked') return 'revoked';
+    if (!entry.expiry) return 'lifetime';
+    if (Date.now() > entry.expiry) return 'expired';
+    return 'active';
+  }
+
+  function renderTable() {
+    const q = (document.getElementById('search-input').value || '').toLowerCase();
+    const filtered = keys.filter(e =>
+      e.name.toLowerCase().includes(q) || e.key.toLowerCase().includes(q)
+    );
+    const tbody = document.getElementById('keys-tbody');
+    const empty = document.getElementById('empty-state');
+    if (filtered.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = filtered.map(e => {
+      const status = getStatus(e);
+      const expiryStr = e.expiry ? new Date(e.expiry).toLocaleDateString() : '—';
+      const created = new Date(e.created).toLocaleDateString();
+      const typeLabel = e.days === 0 ? 'Lifetime' : e.days + 'd';
+      return `<tr>
+        <td class="key-mono">${e.key}</td>
+        <td>${e.name}</td>
+        <td style="font-size:12px;">${typeLabel}</td>
+        <td><span class="pill ${status}">${status}</span></td>
+        <td style="font-size:12px;">${expiryStr}</td>
+        <td style="font-size:12px;">$${e.price}</td>
+        <td style="font-size:12px;">${created}</td>
+        <td>
+          ${status !== 'revoked' ? `<button class="danger" style="font-size:12px;padding:4px 10px;" onclick="quickRevoke('${e.key}')">Revoke</button>` : '<span style="color:var(--text3);font-size:12px;">Revoked</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function quickRevoke(k) {
+    const entry = keys.find(e => e.key === k);
+    if (!entry) return;
+    if (!confirm('Revoke ' + k + ' (' + entry.name + ')?')) return;
+    entry.status = 'revoked';
+    saveKeys();
+    renderTable();
+    updateStats();
+  }
+
+  function updateStats() {
+    const total = keys.length;
+    const active = keys.filter(e => getStatus(e) === 'active' || getStatus(e) === 'lifetime').length;
+    const expired = keys.filter(e => getStatus(e) === 'expired').length;
+    const revenue = keys.reduce((s, e) => s + (e.price || 0), 0);
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-active').textContent = active;
+    document.getElementById('s-expired').textContent = expired;
+    document.getElementById('s-revenue').textContent = '$' + revenue.toFixed(0);
+  }
+
+  function clearAllKeys() {
+    keys = [];
+    saveKeys();
+    renderTable();
+    updateStats();
+  }
+</script>
+</body>
+</html>
