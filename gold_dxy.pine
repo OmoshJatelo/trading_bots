@@ -1,0 +1,354 @@
+// ============================================================
+// GOLD DXY DIVERGENCE STRATEGY
+// Pine Script v5
+// Author:  Omosh Jatelo Institutional-Grade Intermarket Analysis
+// Description: Detects divergence between XAUUSD (Gold) and
+//              the US Dollar Index (DXY) with Market Structure,
+//              BOS confirmation, and Trend Strength filtering.
+// ============================================================
+
+//@version=5
+indicator("Gold DXY Divergence Strategy", shorttitle="GOLD/DXY DIV", overlay=true, max_labels_count=500, max_lines_count=500)
+
+// ============================================================
+// SECTION 1: USER INPUTS
+// ============================================================
+
+// --- Swing Detection ---
+i_swingLen     = input.int(5,     title="Swing Lookback Length",       minval=2,   maxval=20,  group="📊 Market Structure")
+i_minSwingMult = input.float(1.5, title="Min Swing Size (× ATR)",      minval=0.5, maxval=5.0, step=0.5, group="📊 Market Structure")
+i_minDivGap    = input.float(1.0, title="Min Divergence Gap (× ATR)",  minval=0.5, maxval=4.0, step=0.5, group="📊 Market Structure")
+
+// --- Trend Strength Filter ---
+i_trendFilter    = input.bool(true,   title="Enable Trend Strength Filter",    group="💪 Trend Filter")
+i_trendMethod    = input.string("EMA Slope", title="Trend Method", options=["EMA Slope", "ADX"], group="💪 Trend Filter")
+i_emaLen         = input.int(50,  title="EMA Length (for EMA Slope method)",   minval=10, maxval=200, group="💪 Trend Filter")
+i_adxLen         = input.int(14,  title="ADX Length (for ADX method)",         minval=5,  maxval=50,  group="💪 Trend Filter")
+i_adxThresh      = input.float(20.0, title="ADX Threshold (min strength)",     minval=10, maxval=40, step=1.0, group="💪 Trend Filter")
+
+// --- Entry Confirmation ---
+i_retestConfirm  = input.bool(false, title="Require Retest Confirmation",      group="🎯 Entry Logic")
+
+// --- Visuals ---
+i_showSwings     = input.bool(true,  title="Show Swing Highs/Lows",            group="🎨 Visuals")
+i_showDivLines   = input.bool(true,  title="Show Divergence Lines",            group="🎨 Visuals")
+i_showDXYTrend   = input.bool(true,  title="Show DXY Trend Direction",         group="🎨 Visuals")
+i_showBG         = input.bool(true,  title="Show Background on Divergence",    group="🎨 Visuals")
+
+// ============================================================
+// SECTION 2: DATA SOURCES
+// ============================================================
+
+// Fetch DXY (US Dollar Index) from TVC
+dxy = request.security("TVC:DXY", timeframe.period, close)
+
+// Gold = current chart (assumed XAUUSD)
+gold = close
+
+// ============================================================
+// SECTION 3: SWING HIGH / SWING LOW DETECTION
+// ============================================================
+// A swing high is a bar whose high is the highest within +/- swingLen bars
+// A swing low is a bar whose low is the lowest within +/- swingLen bars
+
+// --- Gold Swings ---
+goldSwingHigh = ta.pivothigh(high, i_swingLen, i_swingLen)
+goldSwingLow  = ta.pivotlow(low,  i_swingLen, i_swingLen)
+
+// --- DXY Swings ---
+dxySwingHigh  = ta.pivothigh(dxy,  i_swingLen, i_swingLen)
+dxySwingLow   = ta.pivotlow(dxy,   i_swingLen, i_swingLen)
+
+// ============================================================
+// SECTION 4: TRACK LAST TWO SWING POINTS (for HH/LL logic)
+// ============================================================
+// We store the last two confirmed swing highs and lows for both assets
+// to compare and identify Higher Highs (HH) and Lower Lows (LL)
+
+// --- Gold: Last 2 Swing Highs ---
+var float goldSH1 = na   // Most recent swing high
+var float goldSH2 = na   // Previous swing high
+var int   goldSH1Bar = na
+var int   goldSH2Bar = na
+
+if not na(goldSwingHigh)
+    goldSH2    := goldSH1
+    goldSH2Bar := goldSH1Bar
+    goldSH1    := goldSwingHigh
+    goldSH1Bar := bar_index - i_swingLen
+
+// --- Gold: Last 2 Swing Lows ---
+var float goldSL1 = na
+var float goldSL2 = na
+var int   goldSL1Bar = na
+var int   goldSL2Bar = na
+
+if not na(goldSwingLow)
+    goldSL2    := goldSL1
+    goldSL2Bar := goldSL1Bar
+    goldSL1    := goldSwingLow
+    goldSL1Bar := bar_index - i_swingLen
+
+// --- DXY: Last 2 Swing Highs ---
+var float dxySH1 = na
+var float dxySH2 = na
+
+if not na(dxySwingHigh)
+    dxySH2 := dxySH1
+    dxySH1 := dxySwingHigh
+
+// --- DXY: Last 2 Swing Lows ---
+var float dxySL1 = na
+var float dxySL2 = na
+
+if not na(dxySwingLow)
+    dxySL2 := dxySL1
+    dxySL1 := dxySwingLow
+
+// ============================================================
+// SECTION 5: HIGHER HIGH / LOWER LOW CONDITIONS
+// ============================================================
+
+// ============================================================
+// SECTION 5: HIGHER HIGH / LOWER LOW CONDITIONS (Strong Only)
+// ============================================================
+
+atrVal = ta.atr(14)
+
+// Minimum swing size filter — swing must be meaningfully large
+goldSH1Valid = not na(goldSH1) and not na(goldSH2) and (goldSH1 - goldSL1) >= atrVal * i_minSwingMult
+goldSL1Valid = not na(goldSL1) and not na(goldSL2) and (goldSH1 - goldSL1) >= atrVal * i_minSwingMult
+
+// Gold making Higher Highs: meaningful gap between the two swing highs
+goldHH = goldSH1Valid and (goldSH1 - goldSH2) >= atrVal * i_minDivGap
+
+// Gold making Lower Lows: meaningful gap between the two swing lows
+goldLL = goldSL1Valid and (goldSL2 - goldSL1) >= atrVal * i_minDivGap
+
+// DXY making Higher Highs (same gap filter using a % threshold since DXY has different scale)
+dxyRange    = not na(dxySH1) and not na(dxySL1) ? dxySH1 - dxySL1 : na
+dxySH1Valid = not na(dxySH1) and not na(dxySH2) and not na(dxyRange) and dxyRange >= 0.3
+dxySL1Valid = not na(dxySL1) and not na(dxySL2) and not na(dxyRange) and dxyRange >= 0.3
+
+dxyHH = dxySH1Valid and (dxySH1 - dxySH2) >= 0.2   // DXY: at least 0.2 index points between highs
+dxyLL = dxySL1Valid and (dxySL2 - dxySL1) >= 0.2   // DXY: at least 0.2 index points between lows
+
+// ============================================================
+// SECTION 6: BREAK OF STRUCTURE (BOS)
+// ============================================================
+// Bearish BOS: Gold closes below the most recent swing low
+// Bullish BOS: Gold closes above the most recent swing high
+
+bearishBOS = not na(goldSL1) and close < goldSL1
+bullishBOS = not na(goldSH1) and close > goldSH1
+
+// ============================================================
+// SECTION 7: RETEST CONFIRMATION (Optional)
+// ============================================================
+
+retestBuffer = ta.atr(14) * 0.5
+
+bearishRetest = i_retestConfirm ? (bearishBOS[1] and high >= goldSL1 - retestBuffer and high <= goldSL1 + retestBuffer) : true
+bullishRetest = i_retestConfirm ? (bullishBOS[1] and low  <= goldSH1 + retestBuffer and low  >= goldSH1 - retestBuffer) : true
+
+// ============================================================
+// SECTION 8: TREND STRENGTH FILTER
+// ============================================================
+
+// --- EMA Slope Method ---
+emaValue   = ta.ema(close, i_emaLen)
+emaSlope   = emaValue - emaValue[3]   // Slope over 3 bars
+emaBullish = emaSlope > 0
+emaBearish = emaSlope < 0
+
+// --- ADX Method ---
+[diPlus, diMinus, adxValue] = ta.dmi(i_adxLen, i_adxLen)
+adxStrong   = adxValue >= i_adxThresh
+adxBullish  = adxStrong and diPlus  > diMinus
+adxBearish  = adxStrong and diMinus > diPlus
+
+// --- Combine based on selected method ---
+trendBullOK = i_trendFilter ? (i_trendMethod == "EMA Slope" ? emaBullish : adxBullish) : true
+trendBearOK = i_trendFilter ? (i_trendMethod == "EMA Slope" ? emaBearish : adxBearish) : true
+
+// ============================================================
+// SECTION 9: DIVERGENCE DETECTION
+// ============================================================
+// Bearish Divergence: Gold HH + DXY HH (or DXY not making LL)
+//   → inverse relationship means DXY rising = Gold should fall
+// Bullish Divergence: Gold LL + DXY LL (or DXY not making HH)
+//   → DXY falling while Gold also falling = DXY may turn, supporting Gold
+
+bearishDivergence = goldHH and (dxyHH or not dxyLL)
+bullishDivergence = goldLL and (dxyLL or not dxyHH)
+
+// Persist divergence state until BOS confirmation
+var bool pendingBearDiv = false
+var bool pendingBullDiv = false
+
+if bearishDivergence
+    pendingBearDiv := true
+if bullishDivergence
+    pendingBullDiv := true
+
+// Reset after signal fires
+var bool sellFired = false
+var bool buyFired  = false
+
+// ============================================================
+// SECTION 10: FINAL SIGNAL LOGIC
+// ============================================================
+// SELL: Pending bearish divergence + Bearish BOS + Trend confirms + Retest (optional)
+// BUY:  Pending bullish divergence + Bullish BOS + Trend confirms + Retest (optional)
+
+sellSignal = pendingBearDiv and bearishBOS and trendBearOK and bearishRetest and not sellFired
+buySignal  = pendingBullDiv and bullishBOS and trendBullOK and bullishRetest and not buyFired
+
+// Reset pending states after confirmed signal
+if sellSignal
+    pendingBearDiv := false
+    sellFired      := true
+    buyFired       := false
+
+if buySignal
+    pendingBullDiv := false
+    buyFired       := true
+    sellFired      := false
+
+// ============================================================
+// SECTION 11: PLOT SIGNALS — ARROWS
+// ============================================================
+
+// BUY arrow below candle (green)
+plotshape(buySignal,
+     title     = "BUY Signal",
+     location  = location.belowbar,
+     style     = shape.arrowup,
+     color     = color.new(color.lime, 0),
+     size      = size.normal,
+     text      = "BUY")
+
+// SELL arrow above candle (red)
+plotshape(sellSignal,
+     title     = "SELL Signal",
+     location  = location.abovebar,
+     style     = shape.arrowdown,
+     color     = color.new(color.red, 0),
+     size      = size.normal,
+     text      = "SELL")
+
+// ============================================================
+// SECTION 12: LABELS — Divergence Detected / Confirmed Entry
+// ============================================================
+
+if bearishDivergence and i_showDivLines
+    label.new(bar_index, high,
+         text      = "⚠️ Bearish Div Detected",
+         style     = label.style_label_down,
+         color     = color.new(color.orange, 20),
+         textcolor = color.white,
+         size      = size.small)
+
+if bullishDivergence and i_showDivLines
+    label.new(bar_index, low,
+         text      = "⚠️ Bullish Div Detected",
+         style     = label.style_label_up,
+         color     = color.new(color.teal, 20),
+         textcolor = color.white,
+         size      = size.small)
+
+if sellSignal
+    label.new(bar_index, high,
+         text      = "✅ Confirmed SELL Entry",
+         style     = label.style_label_down,
+         color     = color.new(color.red, 10),
+         textcolor = color.white,
+         size      = size.normal)
+
+if buySignal
+    label.new(bar_index, low,
+         text      = "✅ Confirmed BUY Entry",
+         style     = label.style_label_up,
+         color     = color.new(color.green, 10),
+         textcolor = color.white,
+         size      = size.normal)
+
+// ============================================================
+// SECTION 13: SWING HIGH / LOW MARKERS (Toggle-able)
+// ============================================================
+
+plotshape(i_showSwings and not na(goldSwingHigh) ? goldSwingHigh : na,
+     title     = "Gold Swing High",
+     location  = location.absolute,
+     style     = shape.triangledown,
+     color     = color.new(color.red, 40),
+     size      = size.tiny)
+
+plotshape(i_showSwings and not na(goldSwingLow) ? goldSwingLow : na,
+     title     = "Gold Swing Low",
+     location  = location.absolute,
+     style     = shape.triangleup,
+     color     = color.new(color.green, 40),
+     size      = size.tiny)
+
+// ============================================================
+// SECTION 14: DXY TREND DIRECTION (Toggle-able, info label)
+// ============================================================
+
+dxyEMA       = ta.ema(dxy, i_emaLen)
+dxyTrendUp   = dxy > dxyEMA
+dxyTrendDown = dxy < dxyEMA
+
+// DXY trend status — shown as a small label every 20 bars to reduce clutter
+if i_showDXYTrend and bar_index % 20 == 0
+    dxyTrendText  = dxyTrendUp ? "DXY ▲" : "DXY ▼"
+    dxyTrendColor = dxyTrendUp ? color.new(color.blue, 30) : color.new(color.maroon, 30)
+    label.new(bar_index, low * 0.9995,
+         text      = dxyTrendText,
+         style     = label.style_label_up,
+         color     = dxyTrendColor,
+         textcolor = color.white,
+         size      = size.tiny)
+
+// ============================================================
+// SECTION 15: DIVERGENCE BACKGROUND COLOR (Toggle-able)
+// ============================================================
+
+bgColorBear = i_showBG and pendingBearDiv ? color.new(color.red,   88) : na
+bgColorBull = i_showBG and pendingBullDiv ? color.new(color.green, 88) : na
+
+bgcolor(bgColorBear, title="Bearish Divergence Background")
+bgcolor(bgColorBull, title="Bullish Divergence Background")
+
+// ============================================================
+// SECTION 16: EMA PLOT (Trend Reference)
+// ============================================================
+
+plot(ta.ema(close, i_emaLen),
+     title = "EMA Trend Filter",
+     color = color.new(color.orange, 30),
+     linewidth = 1)
+
+// ============================================================
+// SECTION 17: ALERT CONDITIONS
+// ============================================================
+
+alertcondition(buySignal,
+     title   = "BUY SIGNAL - Gold DXY Divergence",
+     message = "🟢 BUY SIGNAL | Gold DXY Divergence Strategy\nGold making Lower Lows while DXY confirms. Break of Structure confirmed. Entry triggered.")
+
+alertcondition(sellSignal,
+     title   = "SELL SIGNAL - Gold DXY Divergence",
+     message = "🔴 SELL SIGNAL | Gold DXY Divergence Strategy\nGold making Higher Highs while DXY confirms. Break of Structure confirmed. Entry triggered.")
+
+alertcondition(bullishDivergence,
+     title   = "Bullish Divergence Detected - Gold DXY",
+     message = "⚠️ Bullish Divergence Forming | Gold vs DXY — Watch for BOS confirmation.")
+
+alertcondition(bearishDivergence,
+     title   = "Bearish Divergence Detected - Gold DXY",
+     message = "⚠️ Bearish Divergence Forming | Gold vs DXY — Watch for BOS confirmation.")
+
+// ============================================================
+// END OF SCRIPT
+// ============================================================

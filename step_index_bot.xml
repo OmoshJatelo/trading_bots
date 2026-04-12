@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml xmlns="https://developers.google.com/blockly/xml">
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 1 — Variable Declarations
+       (Only variables we actually need)
+  ═══════════════════════════════════════════ -->
+  <block type="variables_set" id="var_entry_init" x="20" y="20">
+    <field name="VAR">entry_spot</field>
+    <value name="VALUE">
+      <block type="math_number">
+        <field name="NUM">0</field>
+      </block>
+    </value>
+    <next>
+      <block type="variables_set" id="var_exit_init">
+        <field name="VAR">exit_spot</field>
+        <value name="VALUE">
+          <block type="math_number">
+            <field name="NUM">0</field>
+          </block>
+        </value>
+        <next>
+          <block type="variables_set" id="var_profit_init">
+            <field name="VAR">last_profit</field>
+            <value name="VALUE">
+              <block type="math_number">
+                <field name="NUM">0</field>
+              </block>
+            </value>
+          </block>
+        </next>
+      </block>
+    </next>
+  </block>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 2 — Before Purchase
+       Runs before each trade is placed.
+       Log that we are about to buy.
+  ═══════════════════════════════════════════ -->
+  <block type="before_purchase" id="before_purchase_block" x="20" y="200">
+    <statement name="STATEMENT">
+      <block type="notify" id="log_before">
+        <field name="NOTIFICATION_TYPE">info</field>
+        <value name="NOTIFICATION">
+          <block type="text">
+            <field name="TEXT">Placing Rise trade — stake 1 USD</field>
+          </block>
+        </value>
+        <next>
+          <!-- Purchase the contract -->
+          <block type="purchase" id="purchase_block">
+            <field name="PURCHASE_TYPE">CALL</field>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 3 — After Purchase
+       Runs automatically after the contract settles.
+       Read entry/exit spot and profit here.
+  ═══════════════════════════════════════════ -->
+  <block type="after_purchase" id="after_purchase_block" x="20" y="400">
+    <statement name="STATEMENT">
+
+      <!-- Capture entry spot -->
+      <block type="variables_set" id="set_entry_after">
+        <field name="VAR">entry_spot</field>
+        <value name="VALUE">
+          <block type="contract_check" id="get_entry">
+            <field name="CHECK">entry_spot</field>
+          </block>
+        </value>
+        <next>
+
+          <!-- Capture exit spot -->
+          <block type="variables_set" id="set_exit_after">
+            <field name="VAR">exit_spot</field>
+            <value name="VALUE">
+              <block type="contract_check" id="get_exit">
+                <field name="CHECK">exit_spot</field>
+              </block>
+            </value>
+            <next>
+
+              <!-- Capture profit -->
+              <block type="variables_set" id="set_profit">
+                <field name="VAR">last_profit</field>
+                <value name="VALUE">
+                  <block type="contract_check" id="get_profit">
+                    <field name="CHECK">profit</field>
+                  </block>
+                </value>
+                <next>
+
+                  <!-- Log entry and exit spots -->
+                  <block type="notify" id="log_spots">
+                    <field name="NOTIFICATION_TYPE">info</field>
+                    <value name="NOTIFICATION">
+                      <block type="text_join" id="msg_spots">
+                        <mutation items="4"/>
+                        <value name="ADD0">
+                          <block type="text">
+                            <field name="TEXT">Entry: </field>
+                          </block>
+                        </value>
+                        <value name="ADD1">
+                          <block type="variables_get">
+                            <field name="VAR">entry_spot</field>
+                          </block>
+                        </value>
+                        <value name="ADD2">
+                          <block type="text">
+                            <field name="TEXT"> | Exit: </field>
+                          </block>
+                        </value>
+                        <value name="ADD3">
+                          <block type="variables_get">
+                            <field name="VAR">exit_spot</field>
+                          </block>
+                        </value>
+                      </block>
+                    </value>
+                    <next>
+
+                      <!-- Evaluate win or loss using profit -->
+                      <block type="controls_if" id="evaluate_result">
+                        <mutation else="1"/>
+                        <value name="IF0">
+                          <block type="logic_compare" id="profit_check">
+                            <field name="OP">GT</field>
+                            <value name="A">
+                              <block type="variables_get">
+                                <field name="VAR">last_profit</field>
+                              </block>
+                            </value>
+                            <value name="B">
+                              <block type="math_number">
+                                <field name="NUM">0</field>
+                              </block>
+                            </value>
+                          </block>
+                        </value>
+                        <statement name="DO0">
+                          <!-- WIN -->
+                          <block type="notify" id="log_win">
+                            <field name="NOTIFICATION_TYPE">success</field>
+                            <value name="NOTIFICATION">
+                              <block type="text_join">
+                                <mutation items="2"/>
+                                <value name="ADD0">
+                                  <block type="text">
+                                    <field name="TEXT">WIN — Profit: </field>
+                                  </block>
+                                </value>
+                                <value name="ADD1">
+                                  <block type="variables_get">
+                                    <field name="VAR">last_profit</field>
+                                  </block>
+                                </value>
+                              </block>
+                            </value>
+                          </block>
+                        </statement>
+                        <statement name="ELSE">
+                          <!-- LOSS -->
+                          <block type="notify" id="log_loss">
+                            <field name="NOTIFICATION_TYPE">error</field>
+                            <value name="NOTIFICATION">
+                              <block type="text_join">
+                                <mutation items="2"/>
+                                <value name="ADD0">
+                                  <block type="text">
+                                    <field name="TEXT">LOSS — Profit: </field>
+                                  </block>
+                                </value>
+                                <value name="ADD1">
+                                  <block type="variables_get">
+                                    <field name="VAR">last_profit</field>
+                                  </block>
+                                </value>
+                              </block>
+                            </value>
+                          </block>
+                        </statement>
+                      </block>
+
+                    </next>
+                  </block>
+
+                </next>
+              </block>
+
+            </next>
+          </block>
+
+        </next>
+      </block>
+
+    </statement>
+  </block>
+
+  <!-- ═══════════════════════════════════════════
+       BLOCK 4 — Trade Definition
+       Duration: 1 tick, Stake: 1 USD
+       This drives the whole cycle.
+  ═══════════════════════════════════════════ -->
+  <block type="trade" id="trade_block" x="20" y="700">
+    <field name="MARKET">synthetic_index</field>
+    <field name="ASSET">STPIDX</field>
+    <field name="TRADE_TYPE">rise_fall</field>
+    <field name="DURATION">1</field>
+    <field name="DURATION_UNIT">t</field>
+    <field name="AMOUNT">1</field>
+    <field name="AMOUNT_TYPE">stake</field>
+  </block>
+
+</xml>

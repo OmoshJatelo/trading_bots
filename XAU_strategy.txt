@@ -1,0 +1,43 @@
+my prime gold trading strategy
+
+trend= direction of break of Structure
+timeframe = 1 hour, 30 mins or higher. no scalping
+if (is_downtrend):
+    bias= bearish
+    print("looking for sell entries")
+else:
+    bias= bullish
+    print("looking for buy entries")
+
+
+if(isStrong_Downtrend or IsStrongUptrend):
+    entert at the two touchpoint support or resistance breakout
+elseif(isweakUptrend or isWeakdowntrend):
+    enter when price respects the fairvalue gap or order block at discount for buys or premium for sales
+else:
+  Skip tradee
+entry_zone= (fvg/order_block at premium for sales or discount for buys) for slow trends OR (at the strong continuation breakout) for strong trends
+
+expected trades per week = 4
+
+
+The gold dxy divergence strategy
+
+only trade on 30 minutes
+
+if(isSrongTrend):
+    enter at the the close of the signal candle
+    only trade with trend
+if(isWeakTrend):
+    consider both buy and sell signals
+    if(existsFvg):
+         enter after the fvg is filled
+    else:
+        enter at the order_block
+else:
+    No trade
+
+no trade in ranging markets
+stops atbreak even at 1:1.5
+
+    ONLY WITH DISCIPLINE AND CONSISTENCY AM I GOING TO WIN THIS
