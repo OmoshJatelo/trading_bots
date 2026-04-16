@@ -1258,11 +1258,17 @@
       botRunning = false; inTrade = false; waitingForTicks = false; signalDetected = false;
       openContracts.clear(); pendingBothCount = 0;
       if (subscriptionId) {
-        // If feed was sharing the bot sub, reset feed dot before forgetting
-        if (feedSubId === subscriptionId) { feedSubId = null; document.getElementById('tick-live-dot').className = 'tick-live-dot'; }
+        // If feed was sharing the bot sub, detach feed reference before forgetting
+        if (feedSubId === subscriptionId) feedSubId = null;
         send({ forget: subscriptionId }); subscriptionId = null;
       }
-      if (connected) { document.getElementById('btn-start').disabled = false; document.getElementById('btn-stop').disabled = true; setStatus('connected'); }
+      if (connected) {
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-stop').disabled = true;
+        setStatus('connected');
+        // Restart a standalone tick feed so ticks keep streaming while connected
+        startTickFeed();
+      }
       log('INFO', 't-info', 'Bot stopped.');
     }
     function subscribeToTicks() {
@@ -1416,6 +1422,7 @@
       if (!botRunning) return;
       if (totalPnl <= -Math.abs(stopLoss)) { log('STOP', 't-stop', 'Stop loss hit ($' + stopLoss + '). Bot stopped.'); stopBot(); return; }
       if (totalPnl >= Math.abs(takeProfit)) { log('STOP', 't-win', 'Take profit hit ($' + takeProfit + '). Bot stopped.'); stopBot(); }
+      // Note: stopBot() already calls startTickFeed() so ticks continue after SL/TP.
     }
 
     // Init

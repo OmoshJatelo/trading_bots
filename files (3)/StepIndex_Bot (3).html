@@ -892,7 +892,7 @@
       <div class="card">
         <h3>Virtual Tick Engine</h3>
         <div class="field">
-          <label>Virtual ticks before exit (exits on the next tick after these)</label>
+          <label>Virtual ticks to skip after entry spot</label>
           <select id="virtual-count" onchange="saveSettings()">
             <option value="1">1 virtual tick</option>
             <option value="2">2 virtual ticks</option>
@@ -1318,7 +1318,7 @@
           ticksSinceEntry = 0; waitingForTicks = true;
         }
         log('ENTRY', 't-entry', 'Trade placed | Contract: ' + cid + (direction === 'both' ? ' [BOTH mode]' : ''));
-        log('INFO', 't-info', 'Counting virtual ticks — skipping ' + virtualCount + ', exit on tick ' + (virtualCount + 1) + '...');
+        log('INFO', 't-info', 'Counting virtual ticks — skipping first ' + virtualCount + '...');
       }
       if (r.msg_type === 'proposal_open_contract') {
         const c = r.proposal_open_contract;
@@ -1398,9 +1398,7 @@
       openContracts.clear(); // clear any stale state from previous trade
       const sym = document.getElementById('symbol').value;
       const map = { rise: 'CALL', rise_equal: 'CALLE', fall: 'PUT', fall_equal: 'PUTE' };
-      // duration = virtualCount + 1: skip N virtual ticks, exit on the NEXT tick after them
-      const exitDuration = virtualCount + 1;
-      const params = (ct) => ({ contract_type: ct, symbol: sym, duration: exitDuration, duration_unit: 't', basis: 'stake', amount: stake, currency: 'USD' });
+      const params = (ct) => ({ contract_type: ct, symbol: sym, duration: 1, duration_unit: 't', basis: 'stake', amount: stake, currency: 'USD' });
       if (direction === 'both') {
         pendingBothCount = 2; // wait for both buy responses before switching to waitingForTicks
         send({ buy: 1, price: stake, parameters: params('CALL') });
