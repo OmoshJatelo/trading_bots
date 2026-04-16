@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Step Index Bot — Deriv Virtual Tick Engine v3</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f9f9f8;
+      --bg2: #f1f0eb;
+      --bg3: #ffffff;
+      --border: rgba(0, 0, 0, 0.12);
+      --border2: rgba(0, 0, 0, 0.22);
+      --text: #1a1a18;
+      --text2: #5f5e5a;
+      --text3: #9a9890;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --blue: #185FA5;
+      --blue-light: #E6F1FB;
+      --green: #3B6D11;
+      --green-light: #EAF3DE;
+      --red: #A32D2D;
+      --red-light: #FCEBEB;
+      --amber: #BA7517;
+      --amber-light: #FAEEDA;
+      --purple: #534AB7;
+      --purple-light: #EEEDFE;
+      --teal: #0F6E56;
+      --teal-light: #E1F5EE;
+      --font: -apple-system, 'Segoe UI', sans-serif;
+      --mono: 'Courier New', monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c;
+        --bg2: #2c2c2a;
+        --bg3: #242422;
+        --border: rgba(255, 255, 255, 0.1);
+        --border2: rgba(255, 255, 255, 0.2);
+        --text: #f0ede6;
+        --text2: #a09e97;
+        --text3: #6a6865;
+        --blue: #85B7EB;
+        --blue-light: #042C53;
+        --green: #97C459;
+        --green-light: #173404;
+        --red: #F09595;
+        --red-light: #501313;
+        --amber: #FAC775;
+        --amber-light: #412402;
+        --purple: #AFA9EC;
+        --purple-light: #26215C;
+        --teal: #5DCAA5;
+        --teal-light: #04342C;
+      }
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+    }
+
+    .app {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* LICENCE GATE */
+    .licence-gate {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+    }
+
+    .lc-card {
+      background: var(--bg3);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .lc-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+
+    .lc-logo svg {
+      width: 28px;
+      height: 28px;
+      fill: white;
+    }
+
+    .lc-card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .lc-card p {
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 1.5rem;
+    }
+
+    .lc-card input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg2);
+      color: var(--text);
+      font-size: 15px;
+      font-family: var(--mono);
+      letter-spacing: 2px;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .lc-card input:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    .lc-card input::placeholder {
+      letter-spacing: 0;
+      font-size: 13px;
+      font-family: var(--font);
+      text-transform: none;
+    }
+
+    .lic-err {
+      color: var(--red);
+      font-size: 13px;
+      margin-bottom: .75rem;
+      min-height: 18px;
+    }
+
+    .lic-footer {
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 1rem;
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo svg {
+      width: 22px;
+      height: 22px;
+      fill: white;
+    }
+
+    .header-text h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -.3px;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--text2);
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text3);
+      flex-shrink: 0;
+    }
+
+    .dot.connected {
+      background: var(--green);
+    }
+
+    .dot.trading {
+      background: var(--amber);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .35
+      }
+    }
+
+    /* METRICS */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .metric {
+      background: var(--bg2);
+      border-radius: var(--radius-md);
+      padding: .85rem 1rem;
+    }
+
+    .mlabel {
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+
+    .mvalue {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .mvalue.blue {
+      color: var(--blue);
+    }
+
+    .mvalue.green {
+      color: var(--green);
+    }
+
+    .mvalue.red {
+      color: var(--red);
+    }
+
+    /* GRID */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .full {
+      grid-column: 1/-1;
+    }
+
+    .card {
+      background: var(--bg3);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+    }
+
+    .card h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text2);
+      margin-bottom: 12px;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 4px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg2);
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--font);
+      transition: border-color .15s;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    .field input[type=password] {
+      letter-spacing: 2px;
+    }
+
+    .field input[type=password]::placeholder {
+      letter-spacing: 0;
+    }
+
+    /* DIRECTION — 5 buttons */
+    .dir-btns {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .dir-btn {
+      flex: 1;
+      min-width: 72px;
+      padding: 7px 4px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text);
+      transition: all .15s;
+      text-align: center;
+      font-family: var(--font);
+    }
+
+    .dir-btn:hover {
+      background: var(--bg2);
+    }
+
+    .dir-btn.active-rise {
+      background: var(--green-light);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .dir-btn.active-rise_equal {
+      background: var(--teal-light);
+      color: var(--teal);
+      border-color: var(--teal);
+    }
+
+    .dir-btn.active-fall {
+      background: var(--red-light);
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .dir-btn.active-fall_equal {
+      background: var(--purple-light);
+      color: var(--purple);
+      border-color: var(--purple);
+    }
+
+    .dir-btn.active-both {
+      background: var(--amber-light);
+      color: var(--amber);
+      border-color: var(--amber);
+    }
+
+    /* MARTINGALE */
+    .mg-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mg-btn {
+      flex: 1;
+      padding: 7px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text);
+      transition: all .15s;
+      font-family: var(--font);
+    }
+
+    .mg-btn:hover {
+      background: var(--bg2);
+    }
+
+    .mg-btn.active-off {
+      background: var(--green-light);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .mg-btn.active-on {
+      background: var(--red-light);
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    /* BUTTONS */
+    .token-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .token-row input {
+      flex: 1;
+    }
+
+    button {
+      padding: 9px 20px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-family: var(--font);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+      border: 0.5px solid var(--border2);
+      background: transparent;
+      color: var(--text);
+    }
+
+    button:hover {
+      background: var(--bg2);
+    }
+
+    button:active {
+      transform: scale(.98);
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: white;
+      border-color: var(--blue);
+    }
+
+    button.primary:hover {
+      opacity: .9;
+    }
+
+    button.danger {
+      background: var(--red);
+      color: white;
+      border-color: var(--red);
+    }
+
+    button.danger:hover {
+      opacity: .9;
+    }
+
+    button:disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* LIVE TICK PANEL */
+    .tick-panel {
+      background: var(--bg3);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .tick-panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .tick-panel-header h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text2);
+    }
+
+    .tick-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text3);
+      flex-shrink: 0;
+    }
+
+    .tick-live-dot.live {
+      background: var(--green);
+      animation: pulse 1s infinite;
+    }
+
+    .tick-sym-label {
+      font-size: 12px;
+      color: var(--text3);
+      font-weight: 400;
+      text-transform: none;
+      margin-left: auto;
+    }
+
+    .tick-info-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tick-price {
+      font-size: 26px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--blue);
+    }
+
+    .tick-digit-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--blue-light);
+      color: var(--blue);
+      font-family: var(--mono);
+      border: 0.5px solid var(--blue);
+    }
+
+    .tick-dir-label {
+      font-size: 13px;
+      color: var(--text2);
+    }
+
+    .tick-stream-wrap {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tick-stream {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      min-height: 40px;
+      width: max-content;
+    }
+
+    .tick-pill {
+      padding: 4px 9px;
+      border-radius: 20px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      border: 0.5px solid var(--border);
+      background: var(--bg2);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .tick-pill.up {
+      background: var(--green-light);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .tick-pill.down {
+      background: var(--red-light);
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .tick-pill.eq {
+      background: var(--amber-light);
+      color: var(--amber);
+      border-color: var(--amber);
+    }
+
+    .tick-pill.sig {
+      background: var(--purple-light);
+      color: var(--purple);
+      border-color: var(--purple);
+      animation: pulse .5s 2;
+    }
+
+    .tick-pill.entry {
+      background: var(--teal-light);
+      color: var(--teal);
+      border-color: var(--teal);
+    }
+
+    /* JOURNAL */
+    .journal {
+      background: var(--bg3);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.25rem;
+    }
+
+    .journal h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--text2);
+      margin-bottom: 10px;
+    }
+
+    .log-area {
+      height: 250px;
+      overflow-y: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .log-area::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-area::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 10px;
+      padding: 1px 0;
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .log-time {
+      color: var(--text3);
+      min-width: 75px;
+      flex-shrink: 0;
+    }
+
+    .log-tag {
+      min-width: 115px;
+      flex-shrink: 0;
+    }
+
+    .log-msg {
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .t-virtual {
+      color: var(--amber);
+    }
+
+    .t-tick {
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    .t-win {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .t-loss {
+      color: var(--red);
+      font-weight: 600;
+    }
+
+    .t-info {
+      color: var(--text2);
+    }
+
+    .t-entry {
+      color: var(--purple);
+      font-weight: 600;
+    }
+
+    .t-stop {
+      color: var(--red);
+      font-weight: 600;
+    }
+
+    .t-signal {
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    .t-nextspot {
+      color: var(--amber);
+      font-weight: 600;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 6px;
+    }
+
+    .pill-sm {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 0.5px solid;
+    }
+
+    .pill-reconnect {
+      background: var(--amber-light);
+      color: var(--amber);
+      border-color: var(--amber);
+    }
+
+    .pill-licensed {
+      background: var(--green-light);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    @media(max-width:560px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .full {
+        grid-column: 1;
+      }
+
+      .dir-btn {
+        min-width: 60px;
+        font-size: 10.5px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════ LICENCE GATE ═══════════ -->
+  <div class="licence-gate" id="licence-gate">
+    <div class="lc-card">
+      <div class="lc-logo"><svg viewBox="0 0 24 24">
+          <path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm13 3a4 4 0 100 8 4 4 0 000-8z" />
+        </svg></div>
+      <h2>Step Index Bot</h2>
+      <p>Enter your licence key to activate.<br />Contact your provider if you need a key.</p>
+      <input type="text" id="lic-input" placeholder="SXBT-XXXX-XXXX-XXXX" maxlength="19" oninput="formatLicInput(this)"
+        onkeydown="if(event.key==='Enter')activateLicence()" />
+      <div class="lic-err" id="lic-err"></div>
+      <button class="primary" style="width:100%;padding:11px;" onclick="activateLicence()"
+        id="lic-btn">Activate</button>
+      <div class="lic-footer">Step Index Bot v3.0 — Virtual Tick Engine</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MAIN APP ═══════════ -->
+  <div class="app" id="main-app" style="display:none;">
+
+    <div class="header">
+      <div class="logo"><svg viewBox="0 0 24 24">
+          <path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm13 3a4 4 0 100 8 4 4 0 000-8z" />
+        </svg></div>
+      <div class="header-text">
+        <h1>Step Index Bot</h1>
+        <p>Deriv WebSocket &mdash; Virtual Tick Engine v3.0</p>
+      </div>
+      <div class="status-bar">
+        <span id="lic-badge" class="pill-sm pill-licensed" style="display:none;"></span>
+        <span id="reconnect-badge" class="pill-sm pill-reconnect" style="display:none;">Auto-reconnecting...</span>
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text">Disconnected</span>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="mlabel">Balance</div>
+        <div class="mvalue blue" id="m-balance">—</div>
+      </div>
+      <div class="metric">
+        <div class="mlabel">Trades</div>
+        <div class="mvalue" id="m-trades">0</div>
+      </div>
+      <div class="metric">
+        <div class="mlabel">Wins</div>
+        <div class="mvalue green" id="m-wins">0</div>
+      </div>
+      <div class="metric">
+        <div class="mlabel">P / L</div>
+        <div class="mvalue" id="m-pnl">$0.00</div>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- CONNECTION -->
+      <div class="card full">
+        <h3>Connection</h3>
+        <div class="token-row">
+          <div class="field" style="flex:1;margin-bottom:0;">
+            <input type="password" id="api-token" placeholder="Paste your Deriv API token here..." />
+          </div>
+          <button class="primary" id="btn-connect" onclick="connectDeriv()">Connect</button>
+          <button id="btn-disconnect" onclick="disconnectDeriv()" disabled>Disconnect</button>
+        </div>
+        <p class="hint">Token saved automatically — page refresh reconnects you instantly. Get token at app.deriv.com
+          &rarr; Account Settings &rarr; API Token (Read + Trade scopes).</p>
+      </div>
+
+      <!-- TRADE SETTINGS -->
+      <div class="card">
+        <h3>Trade Settings</h3>
+        <div class="field">
+          <label>Symbol <span style="color:var(--amber);font-size:11px;" id="symbol-loading"></span></label>
+          <select id="symbol" onchange="saveSettings(); restartTickFeed();">
+            <option value="">— Connect to load symbols —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Direction</label>
+          <div class="dir-btns">
+            <button class="dir-btn active-rise" id="dir-rise" onclick="setDir('rise')">&#9650; Rise</button>
+            <button class="dir-btn" id="dir-rise_equal" onclick="setDir('rise_equal')">&#9650;= Rise=</button>
+            <button class="dir-btn" id="dir-fall" onclick="setDir('fall')">&#9660; Fall</button>
+            <button class="dir-btn" id="dir-fall_equal" onclick="setDir('fall_equal')">&#9660;= Fall=</button>
+            <button class="dir-btn" id="dir-both" onclick="setDir('both')">&#9650;&#9660; Both</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Stake (USD)</label>
+          <input type="number" id="stake" value="0.50" min="0.35" step="0.01" onchange="saveSettings()" />
+        </div>
+      </div>
+
+      <!-- VIRTUAL TICK ENGINE -->
+      <div class="card">
+        <h3>Virtual Tick Engine</h3>
+        <div class="field">
+          <label>Virtual ticks before exit (exits on the next tick after these)</label>
+          <select id="virtual-count" onchange="saveSettings()">
+            <option value="1">1 virtual tick</option>
+            <option value="2">2 virtual ticks</option>
+            <option value="3" selected>3 virtual ticks (strategy default)</option>
+            <option value="4">4 virtual ticks</option>
+            <option value="5">5 virtual ticks</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Entry digit trigger (last digit)</label>
+          <select id="entry-digit" onchange="saveSettings()">
+            <option value="any">Any digit</option>
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Martingale on loss</label>
+          <div class="mg-btns">
+            <button class="mg-btn active-off" id="mg-off" onclick="setMartingale(false)">Off (fixed)</button>
+            <button class="mg-btn" id="mg-on" onclick="setMartingale(true)">On (2x loss)</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Stop loss ($)</label>
+          <input type="number" id="stop-loss" value="10" min="1" step="1" onchange="saveSettings()" />
+        </div>
+        <div class="field">
+          <label>Take profit ($)</label>
+          <input type="number" id="take-profit" value="5" min="1" step="1" onchange="saveSettings()" />
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BOT CONTROLS -->
+    <div class="btn-row">
+      <button class="primary" id="btn-start" onclick="startBot()" disabled>&#9654; Start Bot</button>
+      <button class="danger" id="btn-stop" onclick="stopBot()" disabled>&#9632; Stop Bot</button>
+      <button onclick="clearLog()" style="margin-left:auto;">Clear log</button>
+    </div>
+
+    <!-- LIVE TICK FEED -->
+    <div class="tick-panel">
+      <div class="tick-panel-header">
+        <div class="tick-live-dot" id="tick-live-dot"></div>
+        <h3>Live Tick Feed</h3>
+        <span class="tick-sym-label" id="tick-sym-label"></span>
+      </div>
+      <div class="tick-info-row">
+        <span class="tick-price" id="tick-price">—</span>
+        <span class="tick-digit-badge" id="tick-digit">digit: —</span>
+        <span class="tick-dir-label" id="tick-dir-label"></span>
+      </div>
+      <div class="tick-stream-wrap">
+        <div class="tick-stream" id="tick-stream">
+          <span style="font-size:13px;color:var(--text3);">Waiting for connection...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- JOURNAL -->
+    <div class="journal">
+      <h3>Trade Journal</h3>
+      <div class="log-area" id="log-area">
+        <div class="log-entry">
+          <span class="log-time">—</span>
+          <span class="log-tag t-info">[INFO]</span>
+          <span class="log-msg">Connect your Deriv API token to begin.</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-app -->
+
+  <script>
+    // ══════════════════════════════════════════════
+    // CONSTANTS
+    // ══════════════════════════════════════════════
+    const LIC_STORAGE = 'stepbot_active_licence';
+    const ADMIN_KEYS_KEY = 'stepbot_licences';
+    const SETTINGS_KEY = 'stepbot_settings';
+    const TOKEN_KEY = 'stepbot_token';
+    const MAX_PILLS = 24;
+
+    // ══════════════════════════════════════════════
+    // LICENCE SYSTEM
+    // ══════════════════════════════════════════════
+    function formatLicInput(el) {
+      let v = el.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      let p = []; for (let i = 0; i < v.length && i < 16; i += 4) p.push(v.slice(i, i + 4));
+      el.value = p.join('-');
+    }
+    function activateLicence() {
+      const key = document.getElementById('lic-input').value.trim().toUpperCase();
+      const err = document.getElementById('lic-err');
+      const btn = document.getElementById('lic-btn');
+      err.textContent = '';
+      if (!key || key.length < 14) { err.textContent = 'Please enter a valid key.'; return; }
+      btn.disabled = true; btn.textContent = 'Checking...';
+      setTimeout(() => {
+        const r = validateKey(key);
+        if (r.valid) { localStorage.setItem(LIC_STORAGE, JSON.stringify({ key, validated: Date.now(), expiry: r.expiry, name: r.name })); showMainApp(r); }
+        else { err.textContent = r.message; btn.disabled = false; btn.textContent = 'Activate'; }
+      }, 900);
+    }
+    function validateKey(key) {
+      if (!/^SXBT-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) return { valid: false, message: 'Invalid key format. Keys look like SXBT-XXXX-XXXX-XXXX' };
+      try { const raw = localStorage.getItem(ADMIN_KEYS_KEY); if (raw) { const all = JSON.parse(raw); const e = all.find(x => x.key === key); if (e) { if (e.status === 'revoked') return { valid: false, message: 'Key revoked. Contact your provider.' }; if (e.expiry && Date.now() > e.expiry) return { valid: false, message: 'Key expired. Please renew.' }; return { valid: true, expiry: e.expiry, name: e.name }; } } } catch (e) { }
+      try { const c = JSON.parse(localStorage.getItem(LIC_STORAGE) || 'null'); if (c && c.key === key) { if (c.expiry && Date.now() > c.expiry) return { valid: false, message: 'Licence expired.' }; return { valid: true, expiry: c.expiry, name: c.name }; } } catch (e) { }
+      return { valid: true, expiry: null, name: 'User' };
+    }
+    function showMainApp(r) {
+      document.getElementById('licence-gate').style.display = 'none';
+      document.getElementById('main-app').style.display = 'block';
+      const b = document.getElementById('lic-badge');
+      b.textContent = 'Licensed' + (r.expiry ? ' | Expires: ' + new Date(r.expiry).toLocaleDateString() : ' | Lifetime');
+      b.style.display = '';
+      loadSettings(); autoReconnect();
+    }
+    (function () { try { const c = JSON.parse(localStorage.getItem(LIC_STORAGE) || 'null'); if (c && c.key) { const r = validateKey(c.key); if (r.valid) { showMainApp(r); return; } } } catch (e) { } })();
+
+    // ══════════════════════════════════════════════
+    // STATE
+    // ══════════════════════════════════════════════
+    let ws = null, connected = false, botRunning = false;
+    let direction = 'rise';
+    let balance = 0, trades = 0, wins = 0, totalPnl = 0;
+    let virtualCount = 3, inTrade = false, waitingForTicks = false, ticksSinceEntry = 0;
+    // openContracts tracks all pending contract IDs (supports 'both' mode)
+    let openContracts = new Set(), currentContractId = null, subscriptionId = null, feedSubId = null;
+    let pendingBothCount = 0; // how many 'both' buys are still unresolved
+    let reqId = 1, callbacks = {};
+    let entryDigitFilter = 'any';
+    let initialStake = 0.50, stake = 0.50, stopLoss = 10, takeProfit = 5;
+    let martingaleOn = false;
+    let signalDetected = false;   // entry digit matched — waiting for NEXT tick as entry spot
+    let prevPrice = null;         // for tick feed direction
+    let tickPills = [];
+
+    // ══════════════════════════════════════════════
+    // SETTINGS PERSISTENCE
+    // ══════════════════════════════════════════════
+    function saveSettings() {
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+          stake: document.getElementById('stake').value,
+          virtualCount: document.getElementById('virtual-count').value,
+          entryDigit: document.getElementById('entry-digit').value,
+          stopLoss: document.getElementById('stop-loss').value,
+          takeProfit: document.getElementById('take-profit').value,
+          direction, martingaleOn,
+          symbol: document.getElementById('symbol').value
+        }));
+      } catch (e) { }
+    }
+    function loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'); if (!s) return;
+        if (s.stake) document.getElementById('stake').value = s.stake;
+        if (s.virtualCount) document.getElementById('virtual-count').value = s.virtualCount;
+        if (s.entryDigit) document.getElementById('entry-digit').value = s.entryDigit;
+        if (s.stopLoss) document.getElementById('stop-loss').value = s.stopLoss;
+        if (s.takeProfit) document.getElementById('take-profit').value = s.takeProfit;
+        if (s.direction) setDir(s.direction, false);
+        if (s.martingaleOn !== undefined) setMartingale(s.martingaleOn, false);
+      } catch (e) { }
+    }
+
+    // ══════════════════════════════════════════════
+    // AUTO RECONNECT
+    // ══════════════════════════════════════════════
+    function autoReconnect() {
+      const t = localStorage.getItem(TOKEN_KEY);
+      if (t) {
+        document.getElementById('api-token').value = t;
+        document.getElementById('reconnect-badge').style.display = '';
+        log('INFO', 't-info', 'Saved session detected — auto-reconnecting...');
+        setTimeout(() => { document.getElementById('reconnect-badge').style.display = 'none'; connectDeriv(); }, 800);
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // UTILITIES
+    // ══════════════════════════════════════════════
+    function now() { return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+    function log(tag, cls, msg) {
+      const a = document.getElementById('log-area');
+      const el = document.createElement('div'); el.className = 'log-entry';
+      el.innerHTML = `<span class="log-time">${now()}</span><span class="log-tag ${cls}">[${tag}]</span><span class="log-msg">${msg}</span>`;
+      a.appendChild(el); a.scrollTop = a.scrollHeight;
+    }
+    function clearLog() { document.getElementById('log-area').innerHTML = ''; }
+
+    function setDir(d, save = true) {
+      direction = d;
+      ['rise', 'rise_equal', 'fall', 'fall_equal', 'both'].forEach(k => {
+        document.getElementById('dir-' + k).className = 'dir-btn' + (d === k ? ' active-' + k : '');
+      });
+      if (save) saveSettings();
+    }
+    function setMartingale(val, save = true) {
+      martingaleOn = val;
+      document.getElementById('mg-off').className = 'mg-btn' + (!val ? ' active-off' : '');
+      document.getElementById('mg-on').className = 'mg-btn' + (val ? ' active-on' : '');
+      if (save) saveSettings();
+    }
+    function updateMetrics() {
+      document.getElementById('m-balance').textContent = balance > 0 ? '$' + balance.toFixed(2) : '—';
+      document.getElementById('m-trades').textContent = trades;
+      document.getElementById('m-wins').textContent = wins;
+      const el = document.getElementById('m-pnl');
+      el.textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2);
+      el.className = 'mvalue ' + (totalPnl > 0 ? 'green' : totalPnl < 0 ? 'red' : '');
+    }
+    function setStatus(s) {
+      const d = document.getElementById('status-dot'), t = document.getElementById('status-text');
+      if (s === 'connected') { d.className = 'dot connected'; t.textContent = 'Connected'; }
+      else if (s === 'trading') { d.className = 'dot trading'; t.textContent = 'Bot running'; }
+      else { d.className = 'dot'; t.textContent = 'Disconnected'; }
+    }
+    function send(obj, cb) {
+      if (!ws || ws.readyState !== 1) return;
+      obj.req_id = reqId; if (cb) callbacks[reqId] = cb; reqId++;
+      ws.send(JSON.stringify(obj));
+    }
+
+    // ══════════════════════════════════════════════
+    // LIVE TICK FEED
+    // ══════════════════════════════════════════════
+    function updateTickFeed(tick) {
+      const price = tick.quote;
+      const lastDigit = Math.round(price * 10) % 10;
+      document.getElementById('tick-price').textContent = price;
+      document.getElementById('tick-digit').textContent = 'digit: ' + lastDigit;
+
+      // direction vs previous
+      let cls = 'eq', arrow = '=';
+      if (prevPrice !== null) {
+        if (price > prevPrice) { cls = 'up'; arrow = '▲'; }
+        else if (price < prevPrice) { cls = 'down'; arrow = '▼'; }
+      }
+      prevPrice = price;
+      document.getElementById('tick-dir-label').textContent = arrow + ' ' + price;
+
+      // highlight if entry signal on this tick
+      const digitOk = entryDigitFilter === 'any' || lastDigit === parseInt(entryDigitFilter);
+      if (digitOk && botRunning && !inTrade && !waitingForTicks && !signalDetected) cls += ' sig';
+      if (signalDetected && !inTrade) cls = 'entry'; // next tick is entry spot
+
+      // add pill
+      const stream = document.getElementById('tick-stream');
+      if (tickPills.length === 0) stream.innerHTML = '';
+      const pill = document.createElement('span');
+      pill.className = 'tick-pill ' + cls;
+      pill.textContent = price;
+      stream.appendChild(pill);
+      tickPills.push(pill);
+      if (tickPills.length > MAX_PILLS) { const old = tickPills.shift(); if (old.parentNode) old.parentNode.removeChild(old); }
+
+      // auto scroll tick stream
+      const wrap = document.getElementById('tick-stream-wrap'); if (wrap) wrap.scrollLeft = wrap.scrollWidth;
+    }
+
+    function startTickFeed() {
+      const sym = document.getElementById('symbol').value;
+      if (!sym || !connected) return;
+      document.getElementById('tick-live-dot').className = 'tick-live-dot live';
+      document.getElementById('tick-sym-label').textContent = sym;
+      // If the bot is running and already subscribed, re-use that subscription for the feed
+      // to avoid double processing.  Only create a fresh feed sub when the bot is idle.
+      if (subscriptionId) { feedSubId = subscriptionId; return; }
+      send({ ticks: sym, subscribe: 1 }, (r) => { if (!r.error) feedSubId = r.subscription ? r.subscription.id : null; });
+    }
+    function stopTickFeed() {
+      document.getElementById('tick-live-dot').className = 'tick-live-dot';
+      document.getElementById('tick-sym-label').textContent = '';
+      // Only forget the feed sub if it is NOT the bot's strategy sub
+      if (feedSubId && feedSubId !== subscriptionId) { send({ forget: feedSubId }); }
+      feedSubId = null;
+      prevPrice = null; tickPills = []; document.getElementById('tick-stream').innerHTML = '<span style="font-size:13px;color:var(--text3);">Waiting for connection...</span>';
+    }
+    function restartTickFeed() { stopTickFeed(); if (connected) startTickFeed(); }
+
+    // ══════════════════════════════════════════════
+    // SYMBOL LOADER
+    // ══════════════════════════════════════════════
+    function loadSymbols() {
+      const lbl = document.getElementById('symbol-loading'); lbl.textContent = 'Loading...';
+      send({ active_symbols: 'brief', product_type: 'basic' }, (r) => {
+        if (r.error) { lbl.textContent = '(error)'; return; }
+        const steps = (r.active_symbols || []).filter(s => s.display_name && s.display_name.toLowerCase().includes('step index')).sort((a, b) => a.display_name.localeCompare(b.display_name));
+        const sel = document.getElementById('symbol'); sel.innerHTML = '';
+        if (!steps.length) { sel.innerHTML = '<option value="">No Step Index symbols found</option>'; lbl.textContent = '(none)'; return; }
+        let saved = ''; try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}').symbol || ''; } catch (e) { }
+        steps.forEach(s => { const o = document.createElement('option'); o.value = s.symbol; o.textContent = s.display_name; if (s.symbol === saved) o.selected = true; else if (!saved && s.display_name.includes('100')) o.selected = true; sel.appendChild(o); });
+        lbl.textContent = '(' + steps.length + ' found)';
+        log('INFO', 't-info', 'Symbols loaded: ' + steps.map(s => s.display_name + ' [' + s.symbol + ']').join(', '));
+        startTickFeed();
+      });
+    }
+
+    // ══════════════════════════════════════════════
+    // CONNECTION
+    // ══════════════════════════════════════════════
+    function connectDeriv() {
+      const token = document.getElementById('api-token').value.trim();
+      if (!token) { log('ERROR', 't-loss', 'Please enter your Deriv API token.'); return; }
+      localStorage.setItem(TOKEN_KEY, token);
+      log('INFO', 't-info', 'Connecting to Deriv WebSocket...');
+      ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+      ws.onopen = () => {
+        log('INFO', 't-info', 'Authenticating...');
+        send({ authorize: token }, (r) => {
+          if (r.error) { log('ERROR', 't-loss', 'Auth failed: ' + r.error.message); disconnectDeriv(); return; }
+          connected = true; balance = r.authorize.balance;
+          log('INFO', 't-info', 'Authenticated as ' + r.authorize.fullname + ' | Balance: $' + balance.toFixed(2));
+          setStatus('connected');
+          document.getElementById('btn-connect').disabled = true;
+          document.getElementById('btn-disconnect').disabled = false;
+          document.getElementById('btn-start').disabled = false;
+          document.getElementById('api-token').disabled = true;
+          updateMetrics();
+          send({ balance: 1, subscribe: 1 });
+          loadSymbols();
+        });
+      };
+      ws.onmessage = (e) => { const r = JSON.parse(e.data); if (r.req_id && callbacks[r.req_id]) { const cb = callbacks[r.req_id]; delete callbacks[r.req_id]; cb(r); return; } handleMessage(r); };
+      ws.onclose = () => { if (connected) log('INFO', 't-info', 'Connection closed.'); connected = false; botRunning = false; setStatus('disconnected'); stopTickFeed(); document.getElementById('btn-connect').disabled = false; document.getElementById('btn-disconnect').disabled = true; document.getElementById('btn-start').disabled = true; document.getElementById('btn-stop').disabled = true; document.getElementById('api-token').disabled = false; };
+      ws.onerror = () => { log('ERROR', 't-loss', 'WebSocket error.'); };
+    }
+    function disconnectDeriv() { stopBot(); stopTickFeed(); localStorage.removeItem(TOKEN_KEY); if (ws) ws.close(); }
+
+    // ══════════════════════════════════════════════
+    // BOT START / STOP
+    // ══════════════════════════════════════════════
+    function startBot() {
+      if (!connected) return;
+      virtualCount = parseInt(document.getElementById('virtual-count').value);
+      initialStake = parseFloat(document.getElementById('stake').value);
+      stake = initialStake;
+      stopLoss = parseFloat(document.getElementById('stop-loss').value);
+      takeProfit = parseFloat(document.getElementById('take-profit').value);
+      entryDigitFilter = document.getElementById('entry-digit').value;
+      botRunning = true; inTrade = false; waitingForTicks = false; signalDetected = false; ticksSinceEntry = 0;
+      saveSettings();
+      document.getElementById('btn-start').disabled = true;
+      document.getElementById('btn-stop').disabled = false;
+      setStatus('trading');
+      const sym = document.getElementById('symbol').value;
+      log('INFO', 't-info', 'Bot started | ' + sym + ' | ' + direction.toUpperCase() + ' | Stake:$' + stake.toFixed(2) + ' | Virtuals:' + virtualCount + ' | Entry digit:' + entryDigitFilter + ' | SL:$' + stopLoss + ' TP:$' + takeProfit);
+      subscribeToTicks();
+    }
+    function stopBot() {
+      botRunning = false; inTrade = false; waitingForTicks = false; signalDetected = false;
+      openContracts.clear(); pendingBothCount = 0;
+      if (subscriptionId) {
+        // If feed was sharing the bot sub, reset feed dot before forgetting
+        if (feedSubId === subscriptionId) { feedSubId = null; document.getElementById('tick-live-dot').className = 'tick-live-dot'; }
+        send({ forget: subscriptionId }); subscriptionId = null;
+      }
+      if (connected) { document.getElementById('btn-start').disabled = false; document.getElementById('btn-stop').disabled = true; setStatus('connected'); }
+      log('INFO', 't-info', 'Bot stopped.');
+    }
+    function subscribeToTicks() {
+      const sym = document.getElementById('symbol').value;
+      // If there is already a live feed sub for the same symbol, reuse it for the bot strategy
+      // so we never fire handleTick twice per tick.
+      if (feedSubId) {
+        subscriptionId = feedSubId;
+        log('INFO', 't-info', 'Reusing live feed subscription for bot — ' + sym + '. Watching for entry digit...');
+        return;
+      }
+      send({ ticks: sym, subscribe: 1 }, (r) => {
+        if (r.error) { log('ERROR', 't-loss', 'Tick subscribe error: ' + r.error.message); return; }
+        subscriptionId = r.subscription ? r.subscription.id : null;
+        feedSubId = subscriptionId; // share with feed so we do not double-subscribe
+        document.getElementById('tick-live-dot').className = 'tick-live-dot live';
+        document.getElementById('tick-sym-label').textContent = sym;
+        log('INFO', 't-info', 'Subscribed to ticks — ' + sym + '. Watching for entry digit...');
+      });
+    }
+
+    // ══════════════════════════════════════════════
+    // MESSAGE HANDLER
+    // ══════════════════════════════════════════════
+    function handleMessage(r) {
+      // Guard against duplicate tick events: only process a tick from the strategy subscription.
+      // The Deriv API tags every push message with the subscription id that caused it.
+      if (r.msg_type === 'tick') {
+        const sid = r.subscription ? r.subscription.id : null;
+        // Only call updateTickFeed once per physical tick (for whichever sub arrives).
+        updateTickFeed(r.tick);
+        // Only let the bot logic run for the strategy subscription to avoid double triggers.
+        if (botRunning && sid && sid === subscriptionId) handleTick(r.tick);
+        else if (botRunning && !subscriptionId) handleTick(r.tick); // fallback if sub id unknown
+      }
+      if (r.msg_type === 'buy') {
+        if (r.error) {
+          log('ERROR', 't-loss', 'Buy error: ' + r.error.message);
+          if (direction === 'both') { pendingBothCount--; if (pendingBothCount <= 0) { inTrade = false; signalDetected = false; pendingBothCount = 0; } }
+          else { inTrade = false; signalDetected = false; }
+          return;
+        }
+        const cid = r.buy.contract_id;
+        openContracts.add(cid);
+        currentContractId = cid;
+        // Subscribe to contract result immediately — don't wait for virtual ticks to expire.
+        // Virtual tick counting is only for UI logging; the result comes from this subscription.
+        send({ proposal_open_contract: 1, contract_id: cid, subscribe: 1 });
+        if (direction === 'both') {
+          pendingBothCount--;
+          if (pendingBothCount <= 0) { ticksSinceEntry = 0; waitingForTicks = true; pendingBothCount = 0; }
+        } else {
+          ticksSinceEntry = 0; waitingForTicks = true;
+        }
+        log('ENTRY', 't-entry', 'Trade placed | Contract: ' + cid + (direction === 'both' ? ' [BOTH mode]' : ''));
+        log('INFO', 't-info', 'Counting virtual ticks — skipping ' + virtualCount + ', exit on tick ' + (virtualCount + 1) + '...');
+      }
+      if (r.msg_type === 'proposal_open_contract') {
+        const c = r.proposal_open_contract;
+        if (c && c.is_sold && openContracts.has(c.contract_id)) {
+          openContracts.delete(c.contract_id);
+          const profit = parseFloat(c.profit) || 0, won = c.status === 'won';
+          trades++; if (won) wins++;
+          totalPnl = parseFloat((totalPnl + profit).toFixed(2));
+          // Do NOT update balance here — wait for the authoritative 'balance' push message
+          // which Deriv sends automatically after every contract settlement.
+          if (won) { log('WIN', 't-win', 'Trade WON | +$' + Math.abs(profit).toFixed(2) + ' | Contract: ' + c.contract_id); if (martingaleOn) { stake = initialStake; log('INFO', 't-info', 'Martingale: stake reset to $' + initialStake.toFixed(2)); } }
+          else { log('LOSS', 't-loss', 'Trade LOST | -$' + Math.abs(profit).toFixed(2) + ' | Contract: ' + c.contract_id); if (martingaleOn) { stake = parseFloat((stake * 2).toFixed(2)); log('INFO', 't-info', 'Martingale: stake doubled to $' + stake.toFixed(2)); } }
+          // Only mark trade as complete when all open contracts are settled
+          if (openContracts.size === 0) {
+            inTrade = false; waitingForTicks = false; signalDetected = false;
+            updateMetrics();
+            checkSLTP();
+          }
+        }
+      }
+      if (r.msg_type === 'balance') {
+        // This is the authoritative balance from the server — always use it.
+        balance = r.balance.balance;
+        log('BAL', 't-info', 'Balance updated by server: $' + balance.toFixed(2));
+        updateMetrics();
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // TICK HANDLER — 3-PHASE FLOW
+    // Phase 1: Watch for entry digit
+    // Phase 2: Next tick after entry digit = entry spot → place trade
+    // Phase 3: Count virtual ticks → Real Tick 1 = exit spot
+    // ══════════════════════════════════════════════
+    function handleTick(tick) {
+      if (!botRunning) return;
+      const price = tick.quote;
+      const lastDigit = Math.round(price * 10) % 10;
+
+      // PHASE 3 — counting virtual ticks (UI only — result comes from proposal_open_contract sub)
+      if (waitingForTicks) {
+        ticksSinceEntry++;
+        if (ticksSinceEntry <= virtualCount) {
+          log('VIRTUAL ' + ticksSinceEntry, 't-virtual', 'Virtual tick ' + ticksSinceEntry + ' | Price: ' + price + ' | Digit: ' + lastDigit + ' — ignored');
+        } else {
+          const rt = ticksSinceEntry - virtualCount;
+          log('TICK ' + rt, 't-tick', 'Real Tick ' + rt + ' | Price: ' + price + ' | Digit: ' + lastDigit + ' — exit spot recorded');
+          waitingForTicks = false;
+          // NOTE: We no longer send proposal_open_contract here — it was already sent on buy.
+        }
+        return;
+      }
+
+      // PHASE 2 — signal was detected on previous tick, THIS tick is entry spot
+      if (signalDetected && !inTrade && !waitingForTicks) {
+        signalDetected = false;
+        log('ENTRY SPOT', 't-nextspot', 'Entry spot | Price: ' + price + ' | Digit: ' + lastDigit + ' — placing ' + direction.toUpperCase() + ' trade...');
+        placeTrade();
+        return;
+      }
+
+      // PHASE 1 — watching for entry digit
+      if (!inTrade && !waitingForTicks && !signalDetected) {
+        const digitOk = entryDigitFilter === 'any' || lastDigit === parseInt(entryDigitFilter);
+        if (digitOk) {
+          signalDetected = true;
+          log('SIGNAL', 't-signal', 'Entry digit matched! Price: ' + price + ' | Digit: ' + lastDigit + ' — NEXT tick = entry spot');
+        }
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // PLACE TRADE — supports all 5 directions
+    // ══════════════════════════════════════════════
+    function placeTrade() {
+      inTrade = true;
+      openContracts.clear(); // clear any stale state from previous trade
+      const sym = document.getElementById('symbol').value;
+      const map = { rise: 'CALL', rise_equal: 'CALLE', fall: 'PUT', fall_equal: 'PUTE' };
+      // duration = virtualCount + 1: skip N virtual ticks, exit on the NEXT tick after them
+      const exitDuration = virtualCount + 1;
+      const params = (ct) => ({ contract_type: ct, symbol: sym, duration: exitDuration, duration_unit: 't', basis: 'stake', amount: stake, currency: 'USD' });
+      if (direction === 'both') {
+        pendingBothCount = 2; // wait for both buy responses before switching to waitingForTicks
+        send({ buy: 1, price: stake, parameters: params('CALL') });
+        send({ buy: 1, price: stake, parameters: params('PUT') });
+      } else {
+        pendingBothCount = 0;
+        send({ buy: 1, price: stake, parameters: params(map[direction]) });
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // SL / TP
+    // ══════════════════════════════════════════════
+    function checkSLTP() {
+      if (!botRunning) return;
+      if (totalPnl <= -Math.abs(stopLoss)) { log('STOP', 't-stop', 'Stop loss hit ($' + stopLoss + '). Bot stopped.'); stopBot(); return; }
+      if (totalPnl >= Math.abs(takeProfit)) { log('STOP', 't-win', 'Take profit hit ($' + takeProfit + '). Bot stopped.'); stopBot(); }
+    }
+
+    // Init
+    setMartingale(false, false);
+  </script>
+</body>
+
+</html>
